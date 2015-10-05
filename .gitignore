@@ -1,0 +1,6 @@
+*.sublime*
+.Rproj.user
+*.Rproj
+.Rhistory
+settings_local.r
+*.sublime-project
