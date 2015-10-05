@@ -1,0 +1,21 @@
+context('move ade')
+test_that('moveAde',
+{
+	data <- move(system.file("extdata","ricky.csv.gz",package="move"))
+	dataSp<-spTransform(data, center=T)
+	dataLtraj<-as(dataSp, 'ltraj')
+	dataBack<-as(dataLtraj, 'Move')
+	expect_equivalent(coordinates(dataSp), coordinates(dataBack))
+	expect_equal(timestamps(dataSp), timestamps(dataBack))
+	spLtraj<-move2ade(dataSp)
+	suppressMessages(require(adehabitatLT))
+	a<-as(simm.crw(1:100),'Move')
+	expect_true(validObject(a))
+	a<-as(a, 'ltraj')
+	expect_true(validObject(a))
+	a<-as(simm.crw(1:100, id=gl(25,4)),'MoveStack')
+	expect_true(validObject(a))
+	a<-as(a, 'ltraj')
+	expect_true(validObject(a))
+}
+)

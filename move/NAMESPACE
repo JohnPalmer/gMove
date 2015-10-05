@@ -1,0 +1,107 @@
+#importFrom(graphics, "plot")
+import(sp)
+import(methods)
+import(geosphere)
+import(raster)
+import(rgdal)
+importFrom(stats, sd)
+importFrom(stats, var)
+importFrom(stats, optim)
+importFrom(stats, optimize)
+importFrom(utils, read.csv)
+importFrom(utils, unzip)
+importFrom(utils, capture.output)
+importFrom(graphics, par)
+importFrom(graphics, abline)
+importFrom(graphics, segments)
+importFrom(grDevices, rgb)
+importFrom(parallel, parLapply)
+exportClasses(
+	DBBMM,
+	DBBMMStack,
+	Move,
+	MovebankLogin,
+	MoveStack,
+	.UD,
+	.UDStack,
+	.MoveTrack,
+	.MoveTrackSingle,
+	.MoveTrackSingleBurst,
+	.MoveGeneral,
+	dBMvarianceTmp,
+#	dBMvarianceBurst,
+#	dBMvarianceStack,
+#	dBMvariance,
+	dBGBvariance,
+	dBGBvarianceTmp,
+	dynBGB, 
+	MoveBurst,
+	.unUsedRecords,
+	.unUsedRecordsStack
+)
+exportMethods(
+	angle,
+	angleSummary,
+	brownian.bridge.dyn,
+	burst,
+	burstId,
+	citations,
+	"citations<-",
+	contour,
+	corridor,
+	turnAngleGc,
+	distance,
+	distanceSummary,
+	equalProj,
+	getMovebank,
+	getMovebankAnimals,
+	getMovebankData,
+	getMovebankID,
+	getMovebankSensors,
+	getMovebankSensorsAttributes,
+	getMovebankStudies,
+	getMovebankStudy,
+	getMotionVariance,
+	getVolumeUD,
+	hrBootstrap,
+	lines,
+	move,
+	move2ade,
+	movebankLogin, 
+	moveStack,
+	n.indiv,
+	n.locs,
+	outerProbability,
+	plot,
+	plotBursts,
+	points,
+	raster2contour,
+	seglength,
+	show,
+	sensor,
+	speed,
+	speedSummary,
+	split,
+	summary,
+	searchMovebankStudies,
+	timeSummary,
+	#time.lag,
+	timeLag,
+	trackId,
+	brownian.motion.variance.dyn,
+	timestamps,
+	"timestamps<-",
+	burst,
+	split,
+	"unUsedRecords<-",
+	unUsedRecords,
+	idData,
+	'idData<-',
+    "dynBGB",
+    "dynBGBvariance",
+	interpolateTime
+)
+useDynLib(move)
+
+
+           
