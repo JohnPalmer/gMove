@@ -1,4 +1,4 @@
-setGeneric("brownian.bridge.dyn", function(object, raster = 1, dimSize = 10, location.error, margin = 11, window.size = 31, ext=.3, bbox = NA, ...) {
+setGeneric("brownian.bridge.dyn", function(object, raster = 1, dimSize = 10, location.error, margin = 11, window.size = 31, ext=.3, bbox = NA, by.step = FALSE, ...) {
 		   standardGeneric("brownian.bridge.dyn")
 })
 # This method is to enable pointing at a collumn that contains the location error
@@ -8,7 +8,7 @@ setMethod(f = "brownian.bridge.dyn",
 		  location.error <- do.call("$", list(object, location.error))
 		  if(is.null(location.error))
 			  stop('column indicated for location error probably does not exist')
-		  brownian.bridge.dyn(object = object, location.error = location.error, raster = raster, ext=ext, ...)
+		  brownian.bridge.dyn(object = object, location.error = location.error, raster = raster, ext=ext, by.step = by.step,...)
 	  })
 
 ### if neither a raster nor the dimSize is given, then the cell size is
@@ -16,7 +16,7 @@ setMethod(f = "brownian.bridge.dyn",
 setMethod(f = "brownian.bridge.dyn", 
 	  signature = c(object = ".MoveTrackSingle", raster = "missing", dimSize = "missing", location.error = "numeric"), 
 	  function(object, raster, dimSize, location.error, ...) {
-		  return(brownian.bridge.dyn(object = object, dimSize = dimSize, location.error = location.error, margin = margin, window.size = window.size, ext = ext, ...))
+		  return(brownian.bridge.dyn(object = object, dimSize = dimSize, location.error = location.error, margin = margin, window.size = window.size, ext = ext, by.step = by.step, ...))
 	  })  #seems to be necessary
 
 
@@ -46,7 +46,7 @@ setMethod(f = "brownian.bridge.dyn",
 			  raster <- yRange/dimSize
 		  }
 		  return(brownian.bridge.dyn(object = object, raster = raster, location.error = location.error, 
-					     margin = margin, window.size = window.size, ext = ext, ...))
+					     margin = margin, window.size = window.size, ext = ext, by.step = by.step, ...))
 	  })
 
 # if there is no valid raster object, it should be calculated make a raster
@@ -73,20 +73,20 @@ setMethod(f = "brownian.bridge.dyn",
 		  ncol <- ((xmax - xmin)/raster)
 		  ex <- extent(c(xmin, xmax, ymin, ymax))
 		  rst <- raster(ncols = ncol, nrows = nrow, crs = proj4string(object), ex)
-		  return(brownian.bridge.dyn(object = object, raster = rst, location.error = location.error, margin = margin, window.size = window.size, ext = ext,  ...))
+		  return(brownian.bridge.dyn(object = object, raster = rst, location.error = location.error, margin = margin, window.size = window.size, ext = ext, by.step = by.step,  ...))
 	  })
 
 setMethod(f = "brownian.bridge.dyn", 
 	  signature = c(object = ".MoveTrackSingle", raster = "RasterLayer", dimSize = "missing", location.error = "numeric"), 
-	  definition = function(object, raster, location.error, ...) {
+	  definition = function(object, raster, location.error, by.step, ...) {
 		  if (length(location.error) == 1) location.error <- rep(x = location.error, times = n.locs(object))
 		  object <- brownian.motion.variance.dyn(object = object, location.error = location.error, margin = margin, window.size = window.size)
-		  brownian.bridge.dyn(object = object, raster = raster, location.error = location.error, ext = ext,  ...)
+		  brownian.bridge.dyn(object = object, raster = raster, location.error = location.error, ext = ext, by.step = by.step,  ...)
 	  })
 
 setMethod(f = "brownian.bridge.dyn", 
 	  signature = c(object = "dBMvariance", raster = "RasterLayer", dimSize = "missing", location.error = "numeric"), 
-	  definition = function(object, raster, location.error,  ext, time.step,...) {
+	  definition = function(object, raster, location.error,  ext, by.step, time.step, ...) {
 		  if(n.locs(object)!= length(location.error))
 			  stop("The location error vector has not the same length as the move object")
 		  if(any(is.na(location.error)))
@@ -115,6 +115,32 @@ setMethod(f = "brownian.bridge.dyn",
 		  # Fortran agguments n.locs gridSize timeDiff total time x track y track
 		  # variance estimates loc error x raster y raster interpolation time step prop
 		  # vector filled
+		  # 
+		  if(by.step){
+		  	nLocs =  as.integer(1 + sum(object@interest))
+		  ans <- .Fortran("t_dBBMM", nLocs, 
+				  as.integer(ncell(raster)), 
+				  as.double(c(time.lag[object@interest], 0)), 
+				  as.double(T.Total), 
+				  as.double(coordinates(object)[interest, 1]), 
+				  as.double(coordinates(object)[interest, 2]), 
+				  as.double(c(object@means[object@interest],0)), 
+				  as.double(location.error[interest]), 
+				  as.double(coordinates(raster)[, 1]), 
+				  as.double(coordinates(raster)[, 2]), 
+				  as.double(time.step), matrix(as.double(rep(0, (nLocs) * ncell(raster))), (nLocs), ncell(raster)))
+
+
+	dBBMMList = lapply(1:(nLocs-1), function(i) {
+			raster <- setValues(raster, ans[[12]][i,])
+			dBBMM <- new("DBBMM", DBMvar = object, method = "Dynamic Brownian Bridge Movement Model", 
+			       raster, ext = ext)
+		  return(dBBMM)
+			})
+
+		  return(dBBMMList)
+
+		  } else{
 		  ans <- .Fortran("dBBMM", as.integer(1 + sum(object@interest)), 
 				  as.integer(ncell(raster)), 
 				  as.double(c(time.lag[object@interest], 0)), 
@@ -144,8 +170,11 @@ setMethod(f = "brownian.bridge.dyn",
 				  warning("Outer probability: ", outerProbability, " The used extent is too small. Choose an extent which includes more of the probabilities.")
 			  }
 		  }
+		
 
 		  return(dBBMM)
+
+		}
 	  })
 
 ### do brownian.bridge.dyn for all individuals within a MoveStack
