@@ -12,7 +12,7 @@
 !
 
 ! ---------------------------------------------------------------------------
-subroutine t_dBBMM(nLocs, gridSize, timeDiff, tTotal, X, Y, BMvar, LocationError, gridX, gridY, timeStep, probability)
+subroutine t_dBBMM(nLocs, nBridges, gridSize, timeDiff, tTotal, X, Y, BMvar, LocationError, gridX, gridY, timeStep, probability)
 !
 ! Brownian Bridge Movement Model (does not include motion variance)
 !
@@ -22,7 +22,7 @@ subroutine t_dBBMM(nLocs, gridSize, timeDiff, tTotal, X, Y, BMvar, LocationError
 implicit none
 
 ! Input variables
-integer :: nLocs, gridSize
+integer :: nLocs, nBridges, gridSize
 double precision, dimension(nLocs) :: timeDiff
 double precision :: tTotal         
 double precision, dimension(nLocs) :: X       
@@ -40,18 +40,17 @@ double precision, dimension(gridSize) :: int, theta, ZTZ
 integer :: i, j               
 
 ! Output variables
-double precision, dimension(nLocs, gridSize) :: probability
+double precision, dimension(nBridges, gridSize) :: probability
 int = 0.0
 alpha = 0.0
 muX = 0.0
 muY = 0.0
 sigma2 = 0.0
 
-do i = 1, nLocs
+do i = 1, nBridges
     theta = 0.0                            
     tm = 0.0
     ZTZ = 0.0
-    j = 0
     do while(tm <= timeDiff(i))
         call rchkusr()
         alpha = tm / timeDiff(i)
@@ -71,14 +70,14 @@ do i = 1, nLocs
 !                  call dblepr("X was", 5, sum(theta), 1)
         int = int + theta
         tm = tm + timeStep
-        j = j + 1
     end do
-
-!Scaling probabilities so they sum to 1.0
-probability(i, :) = int/timeDiff(i)
-probability(i, :) = probability(i, :)/sum(probability(i, :))
 
 end do
 
+probability = 500
+
+!Scaling probabilities so they sum to 1.0
+!probability = int/tTotal
+!probability = probability/sum(probability)
 
 end subroutine

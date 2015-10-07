@@ -118,7 +118,9 @@ setMethod(f = "brownian.bridge.dyn",
 		  # 
 		  if(by.step){
 		  	nLocs =  as.integer(1 + sum(object@interest))
-		  ans <- .Fortran("t_dBBMM", nLocs, 
+		  	nBridges = nLocs -1
+		  	message('about to...')
+		  ans <- .Fortran("t_dBBMM", nLocs, nBridges, 
 				  as.integer(ncell(raster)), 
 				  as.double(c(time.lag[object@interest], 0)), 
 				  as.double(T.Total), 
@@ -128,15 +130,18 @@ setMethod(f = "brownian.bridge.dyn",
 				  as.double(location.error[interest]), 
 				  as.double(coordinates(raster)[, 1]), 
 				  as.double(coordinates(raster)[, 2]), 
-				  as.double(time.step), matrix(as.double(rep(0, (nLocs) * ncell(raster))), (nLocs), ncell(raster)))
+				  as.double(time.step), matrix(as.double(rep(0, nBridges * ncell(raster))), nBridges, ncell(raster)))
+		  	message('done...')
 
+			return(ans)
 
-	dBBMMList = lapply(1:(nLocs-1), function(i) {
-			raster <- setValues(raster, ans[[12]][i,])
-			dBBMM <- new("DBBMM", DBMvar = object, method = "Dynamic Brownian Bridge Movement Model", 
-			       raster, ext = ext)
-		  return(dBBMM)
-			})
+#	dBBMMList = lapply(1:nBridges, function(i) {
+#			raster <- setValues(raster, ans[[13]][i,])
+#			dBBMM <- new("DBBMM", DBMvar = object, method = "Dynamic Brownian Bridge Movement Model", 
+#			       raster, ext = ext)
+#			 
+#		  return(dBBMM)
+#			})
 
 		  return(dBBMMList)
 
