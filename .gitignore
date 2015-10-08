@@ -4,3 +4,5 @@
 .Rhistory
 settings_local.r
 *.sublime-project
+*.o
+*.so

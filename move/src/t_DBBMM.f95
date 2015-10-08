@@ -12,7 +12,7 @@
 !
 
 ! ---------------------------------------------------------------------------
-subroutine t_dBBMM(nLocs, nBridges, gridSize, timeDiff, tTotal, X, Y, BMvar, LocationError, gridX, gridY, timeStep, probability)
+subroutine t_dBBMM(nLocs, gridSize, timeDiff, tTotal, X, Y, BMvar, LocationError, gridX, gridY, timeStep, probability)
 !
 ! Brownian Bridge Movement Model (does not include motion variance)
 !
@@ -22,7 +22,7 @@ subroutine t_dBBMM(nLocs, nBridges, gridSize, timeDiff, tTotal, X, Y, BMvar, Loc
 implicit none
 
 ! Input variables
-integer :: nLocs, nBridges, gridSize
+integer :: nLocs, gridSize
 double precision, dimension(nLocs) :: timeDiff
 double precision :: tTotal         
 double precision, dimension(nLocs) :: X       
@@ -40,14 +40,15 @@ double precision, dimension(gridSize) :: int, theta, ZTZ
 integer :: i, j               
 
 ! Output variables
-double precision, dimension(nBridges, gridSize) :: probability
+double precision, dimension(nLocs-1, gridSize) :: probability
 int = 0.0
 alpha = 0.0
 muX = 0.0
 muY = 0.0
 sigma2 = 0.0
 
-do i = 1, nBridges
+do i = 1, nLocs-1
+    int = 0.0 ! resetting
     theta = 0.0                            
     tm = 0.0
     ZTZ = 0.0
@@ -72,7 +73,8 @@ do i = 1, nBridges
         tm = tm + timeStep
     end do
 
-probability(i,1) = 500
+probability(i, :) = int/timeDiff(i)
+probability(i, :) = probability(i, :)/sum(probability(i, :))
 
 end do
 
