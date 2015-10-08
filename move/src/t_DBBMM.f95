@@ -72,9 +72,10 @@ do i = 1, nBridges
         tm = tm + timeStep
     end do
 
+probability(i,1) = 500
+
 end do
 
-probability = 500
 
 !Scaling probabilities so they sum to 1.0
 !probability = int/tTotal
