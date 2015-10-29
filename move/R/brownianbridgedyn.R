@@ -1,4 +1,4 @@
-setGeneric("brownian.bridge.dyn", function(object, raster = 1, dimSize = 10, location.error, margin = 11, window.size = 31, ext=.3, bbox = NA, by.step = FALSE, ...) {
+setGeneric("brownian.bridge.dyn", function(object, raster = 1, dimSize = 10, location.error, margin = 11, window.size = 31, ext=.3, bbox = NA, by.step = FALSE, time.bounds = numeric(0), ...) {
 		   standardGeneric("brownian.bridge.dyn")
 })
 # This method is to enable pointing at a collumn that contains the location error
@@ -8,7 +8,7 @@ setMethod(f = "brownian.bridge.dyn",
 		  location.error <- do.call("$", list(object, location.error))
 		  if(is.null(location.error))
 			  stop('column indicated for location error probably does not exist')
-		  brownian.bridge.dyn(object = object, location.error = location.error, raster = raster, ext=ext, by.step = by.step,...)
+		  brownian.bridge.dyn(object = object, location.error = location.error, raster = raster, ext=ext, by.step = by.step, time.bounds = time.bounds,...)
 	  })
 
 ### if neither a raster nor the dimSize is given, then the cell size is
@@ -16,7 +16,7 @@ setMethod(f = "brownian.bridge.dyn",
 setMethod(f = "brownian.bridge.dyn", 
 	  signature = c(object = ".MoveTrackSingle", raster = "missing", dimSize = "missing", location.error = "numeric"), 
 	  function(object, raster, dimSize, location.error, ...) {
-		  return(brownian.bridge.dyn(object = object, dimSize = dimSize, location.error = location.error, margin = margin, window.size = window.size, ext = ext, by.step = by.step, ...))
+		  return(brownian.bridge.dyn(object = object, dimSize = dimSize, location.error = location.error, margin = margin, window.size = window.size, ext = ext, by.step = by.step, time.bounds = time.bounds, ...))
 	  })  #seems to be necessary
 
 
@@ -46,7 +46,7 @@ setMethod(f = "brownian.bridge.dyn",
 			  raster <- yRange/dimSize
 		  }
 		  return(brownian.bridge.dyn(object = object, raster = raster, location.error = location.error, 
-					     margin = margin, window.size = window.size, ext = ext, by.step = by.step, ...))
+					     margin = margin, window.size = window.size, ext = ext, by.step = by.step, time.bounds = time.bounds, ...))
 	  })
 
 # if there is no valid raster object, it should be calculated make a raster
@@ -73,20 +73,20 @@ setMethod(f = "brownian.bridge.dyn",
 		  ncol <- ((xmax - xmin)/raster)
 		  ex <- extent(c(xmin, xmax, ymin, ymax))
 		  rst <- raster(ncols = ncol, nrows = nrow, crs = proj4string(object), ex)
-		  return(brownian.bridge.dyn(object = object, raster = rst, location.error = location.error, margin = margin, window.size = window.size, ext = ext, by.step = by.step,  ...))
+		  return(brownian.bridge.dyn(object = object, raster = rst, location.error = location.error, margin = margin, window.size = window.size, ext = ext, by.step = by.step,  time.bounds = time.bounds, ...))
 	  })
 
 setMethod(f = "brownian.bridge.dyn", 
 	  signature = c(object = ".MoveTrackSingle", raster = "RasterLayer", dimSize = "missing", location.error = "numeric"), 
-	  definition = function(object, raster, location.error, by.step, ...) {
+	  definition = function(object, raster, location.error, by.step, time.bounds, ...) {
 		  if (length(location.error) == 1) location.error <- rep(x = location.error, times = n.locs(object))
 		  object <- brownian.motion.variance.dyn(object = object, location.error = location.error, margin = margin, window.size = window.size)
-		  brownian.bridge.dyn(object = object, raster = raster, location.error = location.error, ext = ext, by.step = by.step,  ...)
+		  brownian.bridge.dyn(object = object, raster = raster, location.error = location.error, ext = ext, by.step = by.step,  time.bounds = time.bounds, ...)
 	  })
 
 setMethod(f = "brownian.bridge.dyn", 
 	  signature = c(object = "dBMvariance", raster = "RasterLayer", dimSize = "missing", location.error = "numeric"), 
-	  definition = function(object, raster, location.error,  ext, by.step, time.step, ...) {
+	  definition = function(object, raster, location.error,  ext, by.step, time.bounds, time.step, ...) {
 		  if(n.locs(object)!= length(location.error))
 			  stop("The location error vector has not the same length as the move object")
 		  if(any(is.na(location.error)))
@@ -142,7 +142,7 @@ setMethod(f = "brownian.bridge.dyn",
 
 		  return(dBBMMList)
 
-		  } else{
+		  } else if(length(time.bounds)==0){
 		  ans <- .Fortran("dBBMM", as.integer(1 + sum(object@interest)), 
 				  as.integer(ncell(raster)), 
 				  as.double(c(time.lag[object@interest], 0)), 
@@ -154,6 +154,43 @@ setMethod(f = "brownian.bridge.dyn",
 				  as.double(coordinates(raster)[, 1]), 
 				  as.double(coordinates(raster)[, 2]), 
 				  as.double(time.step), as.double(rep(0, ncell(raster))))
+
+		  raster <- setValues(raster, ans[[12]])
+
+		  dBBMM <- new("DBBMM", DBMvar = object, method = "Dynamic Brownian Bridge Movement Model", 
+			       raster, ext = ext)
+		  outerProbability <- outerProbability(dBBMM)
+
+		  if (is.na(outerProbability)) {
+			  #              stop("The used extent is too large. Choose a smaller value for ext!")
+			  stop('outerProbability returned an NA value consider different values for ext, this error can also occure if the raster only consist of 1 or few cells (e.g. dimSize=1 or dimSize=2)')
+			  # when did this occure Marco? # should we move these checks to the validity 
+			  # function of the dbbbmm object
+			  #one occurence i found is with a every small raster of 1 by 2 cells
+		  } else {
+			  if (outerProbability > 0.01) {
+				  warning("Outer probability: ", outerProbability, " The used extent is too small. Choose an extent which includes more of the probabilities.")
+			  }
+		  }
+		
+
+		  return(dBBMM)
+
+		} else{
+
+		  ans <- .Fortran("custom_time_dBBMM", as.integer(1 + sum(object@interest)), 
+				  as.integer(ncell(raster)), 
+				  as.double(c(time.lag[object@interest], 0)), 
+				  as.double(difftime(time.bounds[2], time.bounds[1], units="min")), 
+				  as.double(coordinates(object)[interest, 1]), 
+				  as.double(coordinates(object)[interest, 2]), 
+				  as.double(c(object@means[object@interest],0)), 
+				  as.double(location.error[interest]), 
+				  as.double(coordinates(raster)[, 1]), 
+				  as.double(coordinates(raster)[, 2]), 
+				  as.double(time.step), as.double(rep(0, ncell(raster))),
+				  as.double(difftime(time.bounds[1], timestamps(object[1]), units="min")), 
+				  as.double(difftime(time.bounds[2], timestamps(object[length(object)-1]), units="min")))
 
 		  raster <- setValues(raster, ans[[12]])
 
