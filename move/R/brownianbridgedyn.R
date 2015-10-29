@@ -178,40 +178,43 @@ setMethod(f = "brownian.bridge.dyn",
 
 		} else{
 
-		  ans <- .Fortran("custom_time_dBBMM", as.integer(1 + sum(object@interest)), 
+			nTimes = as.integer(length(time.bounds))
+			times = as.double(difftime(time.bounds, timestamps(object[1]), units='min'))
+			llocTimes = c(as.double(difftime(timestamps(object), timestamps(object[1]), units='min'))[interest],0)
+		  	nLocs =  as.integer(1 + sum(object@interest))
+
+		  	message('about to...')
+
+		  ans <- .Fortran("t_dBBMM", nLocs, 
 				  as.integer(ncell(raster)), 
 				  as.double(c(time.lag[object@interest], 0)), 
-				  as.double(difftime(time.bounds[2], time.bounds[1], units="min")), 
+				  as.double(T.Total), 
 				  as.double(coordinates(object)[interest, 1]), 
 				  as.double(coordinates(object)[interest, 2]), 
 				  as.double(c(object@means[object@interest],0)), 
 				  as.double(location.error[interest]), 
 				  as.double(coordinates(raster)[, 1]), 
 				  as.double(coordinates(raster)[, 2]), 
-				  as.double(time.step), as.double(rep(0, ncell(raster))),
-				  as.double(difftime(time.bounds[1], timestamps(object[1]), units="min")), 
-				  as.double(difftime(time.bounds[2], timestamps(object[length(object)-1]), units="min")))
+				  as.double(time.step), matrix(as.double(rep(0, (nTimes-1) * ncell(raster))), (nTimes-1), ncell(raster)),
+				  nTimes,
+				  times,
+				  llocTimes
+				  )
 
-		  raster <- setValues(raster, ans[[12]])
+		  	message('done...')
 
-		  dBBMM <- new("DBBMM", DBMvar = object, method = "Dynamic Brownian Bridge Movement Model", 
-			       raster, ext = ext)
-		  outerProbability <- outerProbability(dBBMM)
 
-		  if (is.na(outerProbability)) {
-			  #              stop("The used extent is too large. Choose a smaller value for ext!")
-			  stop('outerProbability returned an NA value consider different values for ext, this error can also occure if the raster only consist of 1 or few cells (e.g. dimSize=1 or dimSize=2)')
-			  # when did this occure Marco? # should we move these checks to the validity 
-			  # function of the dbbbmm object
-			  #one occurence i found is with a every small raster of 1 by 2 cells
-		  } else {
-			  if (outerProbability > 0.01) {
-				  warning("Outer probability: ", outerProbability, " The used extent is too small. Choose an extent which includes more of the probabilities.")
-			  }
-		  }
-		
+	# dBBMMList = lapply(1:(nTimes-1), function(i) {
+	# 		raster <- setValues(raster, ans[[12]][i,])
+	# 		dBBMM <- new("DBBMM", DBMvar = object, method = "Dynamic Brownian Bridge Movement Model", 
+	# 		       raster, ext = ext)			 
+	# 	  return(dBBMM)
+	# 		})
 
-		  return(dBBMM)
+	# 	  return(dBBMMList)
+	# 	  
+	 	  return(ans)
+
 
 		}
 	  })
