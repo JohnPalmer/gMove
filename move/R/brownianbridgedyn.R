@@ -180,7 +180,7 @@ setMethod(f = "brownian.bridge.dyn",
 
 			nTimes = as.integer(length(time.bounds))
 			times = as.double(difftime(time.bounds, timestamps(object[1]), units='min'))
-			llocTimes = c(as.double(difftime(timestamps(object), timestamps(object[1]), units='min'))[interest],0)
+			llocTimes = as.double(difftime(timestamps(object), timestamps(object[1]), units='min'))
 		  	nLocs =  as.integer(1 + sum(object@interest))
 
 		  	message('about to...')
@@ -195,7 +195,8 @@ setMethod(f = "brownian.bridge.dyn",
 				  as.double(location.error[interest]), 
 				  as.double(coordinates(raster)[, 1]), 
 				  as.double(coordinates(raster)[, 2]), 
-				  as.double(time.step), matrix(as.double(rep(0, (nTimes-1) * ncell(raster))), (nTimes-1), ncell(raster)),
+				  as.double(time.step), 
+				  matrix(as.double(rep(0, (nTimes-1) * ncell(raster))), (nTimes-1), ncell(raster)),
 				  nTimes,
 				  times,
 				  llocTimes
